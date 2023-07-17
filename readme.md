@@ -1,4 +1,4 @@
-#About
+# About
 
 This PS script is intended to add a scheduled task with the current logged-in user as principal when running in a system context (i.e., from an Automox worklet) 
 
