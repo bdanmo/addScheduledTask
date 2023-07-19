@@ -1,4 +1,3 @@
-# Remediation Code
 $User = Get-WmiObject -Class Win32_ComputerSystem | Select-Object -ExpandProperty UserName
 $UserName = $User.Split('\')[1]
 
@@ -6,9 +5,27 @@ $TaskName = "CopyFilesTask"
 $ScriptPath = "C:\Temp\CopyFiles.ps1"
 
 $ScriptContent = @"
+function Copy-Files (`$Source, `$Destination) {
+    `$SourceFiles = Get-ChildItem -Path `$Source -File -Recurse
+
+    foreach (`$File in `$SourceFiles) {
+        `$RelativePath = `$File.FullName.Substring(`$Source.length)
+        `$TargetPath = Join-Path -Path `$Destination -ChildPath `$RelativePath
+
+        if (-not (Test-Path -Path `$TargetPath)) {
+            `$TargetDir = Split-Path -Path `$TargetPath -Parent
+            if (-not (Test-Path -Path `$TargetDir)) {
+                New-Item -ItemType Directory -Path `$TargetDir | Out-Null
+            }
+            Copy-Item -Path `$File.FullName -Destination `$TargetPath
+        }
+    }
+}
+
 `$MyDocumentsPath = '\\hmfsvr.hmfexpress.local\home\$UserName\My Documents'
 `$DocumentsPath = '\\hmfsvr.hmfexpress.local\home\$UserName\Documents'
 `$Destination = 'C:\Users\$UserName\Documents'
+`$AltDestination = 'C:\Users\$UserName.HMFEXPRESS\Documents'
 
 if (Test-Path -Path `$MyDocumentsPath) {
     `$Source = `$MyDocumentsPath
@@ -16,20 +33,10 @@ if (Test-Path -Path `$MyDocumentsPath) {
     `$Source = `$DocumentsPath
 }
 
-`$SourceFiles = Get-ChildItem -Path `$Source -File -Recurse
-`$DestinationFiles = Get-ChildItem -Path `$Destination -File -Recurse
+Copy-Files `$Source `$Destination
 
-foreach (`$File in `$SourceFiles) {
-    `$RelativePath = `$File.FullName.Substring(`$Source.length)
-    `$TargetPath = Join-Path -Path `$Destination -ChildPath `$RelativePath
-
-    if (-not (Test-Path -Path `$TargetPath)) {
-        `$TargetDir = Split-Path -Path `$TargetPath -Parent
-        if (-not (Test-Path -Path `$TargetDir)) {
-            New-Item -ItemType Directory -Path `$TargetDir | Out-Null
-        }
-        Copy-Item -Path `$File.FullName -Destination `$TargetPath
-    }
+if (Test-Path -Path `$AltDestination) {
+    Copy-Files `$Source `$AltDestination
 }
 "@
 
